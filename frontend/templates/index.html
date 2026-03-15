@@ -405,9 +405,9 @@
               <svg width="40" height="40" style="color:#d1d5db;margin:0 auto 10px;display:block;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               <p style="font-size:13px;font-weight:600;color:#6b7280;margin:0;">Glissez ou cliquez</p>
               <p style="font-size:11px;color:#9ca3af;margin:4px 0 0;">CSV ou Excel — max 100MB</p>
-              <input type="file" id="file-input" style="display:none;" accept=".csv,.xlsx,.xls" onchange="handleFileSelect(event)"/>
+              <input type="file" id="file-input" style="display:none;" accept=".csv,.xlsx,.xls"/>
             </div>
-            <div id="file-preview" style="display:none;margin-top:12px;padding:10px 12px;background:#e8f0fb;border-radius:8px;display:flex;align-items:center;justify-content:space-between;">
+            <div id="file-preview" style="display:none;margin-top:12px;padding:10px 12px;background:#e8f0fb;border-radius:8px;">
               <span style="font-size:13px;font-weight:500;color:#1B5EA6;" id="selected-filename"></span>
               <button onclick="clearFile()" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:16px;">✕</button>
             </div>

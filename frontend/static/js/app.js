@@ -172,8 +172,8 @@ async function importFromDB(){const connId=document.getElementById('db-import-pa
 // ── IMPORT ─────────────────────────────────────────────────────────────────
 let dragFile=null;
 function setupDropzone(){const dz=document.getElementById('drop-zone');if(!dz||dz._ready)return;dz._ready=true;dz.addEventListener('dragover',e=>{e.preventDefault();dz.style.borderColor='#1B5EA6';});dz.addEventListener('dragleave',()=>dz.style.borderColor='#e5e7eb');dz.addEventListener('drop',e=>{e.preventDefault();dz.style.borderColor='#e5e7eb';handleFile(e.dataTransfer.files[0]);});document.getElementById('file-input').addEventListener('change',e=>handleFile(e.target.files[0]));}
-function handleFile(file){if(!file)return;dragFile=file;document.getElementById('selected-filename').textContent=`📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;document.getElementById('file-preview').style.display='block';document.getElementById('drop-zone').style.display='none';}
-function clearFile(){dragFile=null;document.getElementById('drop-zone').style.display='block';document.getElementById('file-preview').style.display='none';document.getElementById('file-input').value='';}
+function handleFile(file){if(!file)return;dragFile=file;document.getElementById('selected-filename').textContent=`📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;const fp=document.getElementById('file-preview');fp.style.display='flex';fp.style.alignItems='center';fp.style.justifyContent='space-between';document.getElementById('drop-zone').style.display='none';document.getElementById('upload-btn').disabled=false;}
+function clearFile(){dragFile=null;document.getElementById('drop-zone').style.display='block';document.getElementById('file-preview').style.display='none';document.getElementById('file-input').value='';document.getElementById('upload-btn').disabled=true;}
 async function uploadFile(){if(!dragFile){toast('Choisissez un fichier','error');return;}const source=document.getElementById('import-source-label').value.trim()||dragFile.name;const fd=new FormData();fd.append('file',dragFile);fd.append('source_label',source);const btn=document.getElementById('upload-btn');btn.textContent='⏳ Import…';btn.disabled=true;try{const res=await fetch(`${API}/import/csv`,{method:'POST',headers:{'Authorization':`Bearer ${TOKEN}`},body:fd});const data=await res.json();btn.textContent='📤 Importer';btn.disabled=false;if(data.imported!==undefined){toast(`✅ ${data.imported} lignes importées`);clearFile();loadImportLogs();loadDashboard();}else toast(data.error||'Erreur','error');}catch{btn.textContent='📤 Importer';btn.disabled=false;toast('Erreur upload','error');}}
 async function loadImportLogs(){setupDropzone();const logs=await api('/import/logs');const el=document.getElementById('import-logs-list');if(!el)return;if(!logs?.length){el.innerHTML='<p style="color:#9ca3af;font-size:13px;">Aucun import.</p>';return;}el.innerHTML=`<table style="width:100%;border-collapse:collapse;"><thead><tr><th class="table-th">Fichier</th><th class="table-th">Source</th><th class="table-th">Total</th><th class="table-th">Importés</th><th class="table-th">Erreurs</th><th class="table-th">Statut</th><th class="table-th">Date</th></tr></thead><tbody>${logs.map(l=>{const sc=l.status==='done'?'background:#d1fae5;color:#065f46;':l.status==='error'?'background:#fee2e2;color:#991b1b;':'background:#fef3c7;color:#92400e;';return`<tr><td class="table-td" style="font-weight:600;">${esc(l.filename)}</td><td class="table-td"><span class="badge" style="background:#e8f0fb;color:#1B5EA6;">${esc(l.source_label||'—')}</span></td><td class="table-td">${l.total_rows||0}</td><td class="table-td" style="color:#059669;font-weight:600;">${l.imported||0}</td><td class="table-td" style="color:#dc2626;">${l.errors||0}</td><td class="table-td"><span class="badge" style="${sc}">${l.status}</span></td><td class="table-td" style="font-size:11px;color:#9ca3af;">${fmtDate(l.created_at)}</td></tr>`;}).join('')}</tbody></table>`;}
 
@@ -235,29 +235,30 @@ async function initDupSection(){
   // Charger les sources disponibles
   const srcSel=document.getElementById('dup-source-filter');
   if(!srcSel) return;
-  const data=await api('/entities?page=1&per_page=200');
-  if(!data) return;
-  // Remplir sources
-  const sources=[...new Set(data.entities.map(e=>e.source).filter(Boolean))];
-  while(srcSel.options.length>1) srcSel.remove(1);
-  sources.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;srcSel.appendChild(o);});
-  // Charger les champs initiaux (toutes sources)
+  try{
+    const srcData=await api('/entities/sources');
+    if(srcData&&Array.isArray(srcData)){
+      while(srcSel.options.length>1) srcSel.remove(1);
+      srcData.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;srcSel.appendChild(o);});
+    }
+  }catch(e){}
   await loadDupFields();
 }
 async function loadDupFields(){
-  const src=document.getElementById('dup-source-filter')?.value||'';
-  const params=new URLSearchParams({page:1,per_page:200});if(src)params.set('source',src);
-  const data=await api(`/entities?${params}`);if(!data)return;
-  const fields=[...new Set(data.entities.flatMap(e=>Object.keys(e.data||{})))].sort();
   const sel=document.getElementById('dup-field-select');if(!sel)return;
-  const prev=sel.value;
-  sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
-  fields.forEach(f=>{
-    const o=document.createElement('option');
-    o.value=f;o.textContent=f;
-    if(f===prev) o.selected=true;
-    sel.appendChild(o);
-  });
+  try{
+    const fdata=await api('/reporting/fields');
+    if(fdata?.fields){
+      const prev=sel.value;
+      sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
+      fdata.fields.forEach(f=>{
+        const o=document.createElement('option');
+        o.value=f;o.textContent=f;
+        if(f===prev) o.selected=true;
+        sel.appendChild(o);
+      });
+    }
+  }catch(e){}
 }
 async function detectDuplicates(){
   const method=document.getElementById('dup-method').value;
