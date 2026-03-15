@@ -622,7 +622,7 @@ def list_entities():
     off  = (page-1)*per
     wh   = ["status='active'"]; params = []
     if srch: wh.append("data LIKE ?"); params.append(f'%{srch}%')
-    if src:  wh.append("source LIKE ?"); params.append(f'%{src}%')
+    if src:  wh.append("source=?"); params.append(src)
     w = ' AND '.join(wh)
     total = db.execute(f"SELECT COUNT(*) FROM entities WHERE {w}", params).fetchone()[0]
     rows  = db.execute(f"SELECT * FROM entities WHERE {w} ORDER BY created_at DESC LIMIT ? OFFSET ?",
@@ -1480,7 +1480,7 @@ def pivot_table():
     if not row_f: return jsonify({'error':'row_field requis'}),400
     db=get_db()
     wh="status IN ('active','merged')"; params=[]
-    if src: wh+=" AND source LIKE ?"; params.append(f'%{src}%')
+    if src: wh+=" AND source=?"; params.append(src)
     rows=db.execute(f"SELECT data,source FROM entities WHERE {wh}",params).fetchall()
     data=[]
     for r in rows:
@@ -1529,7 +1529,7 @@ def export_csv():
     source_filter=request.args.get('source','')
     q="SELECT * FROM entities WHERE status='active'"
     if include_merged: q="SELECT * FROM entities WHERE status IN ('active','merged')"
-    if source_filter: q+=" AND source LIKE ?"; params.append(f'%{source_filter}%')
+    if source_filter: q+=" AND source=?"; params.append(source_filter)
     rows=db.execute(q+' ORDER BY created_at DESC',params).fetchall()
     if not rows: return jsonify({'error':'Aucune entité'}),404
     all_data=[]; all_keys=set()
