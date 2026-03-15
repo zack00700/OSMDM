@@ -3,7 +3,9 @@
  * Navires · Armateurs · Ports · Escales
  */
 
-const MAPI = `${window.location.protocol}//${window.location.hostname}:3000/api/maritime`; // via proxy
+const MAPI = window.location.port === '3000'
+  ? `${window.location.protocol}//${window.location.hostname}:3000/api/maritime`
+  : `${window.location.origin}/api/maritime`;
 let vesselPage = 1, ownerPage = 1, portPage = 1, callPage = 1;
 let currentVesselId = null, currentOwnerId = null, currentPortId = null, currentCallId = null;
 let vesselTimer = null, ownerTimer = null, portTimer = null, callTimer = null;

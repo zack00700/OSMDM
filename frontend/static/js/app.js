@@ -5,7 +5,10 @@
  * V2.1 : Responsive + Accessibility
  */
 
-const API = `${window.location.protocol}//${window.location.hostname}:3000/api`;
+// API URL : auto-détecte si on est en local (port 3000) ou en production (même host)
+const API = window.location.port === '3000' 
+  ? `${window.location.protocol}//${window.location.hostname}:3000/api`
+  : `${window.location.origin}/api`;
 let TOKEN = localStorage.getItem('mdm_token') || '';
 let currentUser = null, currentPage = 1;
 let currentEntityId = null, currentDupId = null, currentDupData = null;
