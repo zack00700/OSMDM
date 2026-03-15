@@ -246,19 +246,32 @@ async function initDupSection(){
 }
 async function loadDupFields(){
   const sel=document.getElementById('dup-field-select');if(!sel)return;
+  const src=document.getElementById('dup-source-filter')?.value||'';
   try{
-    const fdata=await api('/reporting/fields');
-    if(fdata?.fields){
-      const prev=sel.value;
-      sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
-      fdata.fields.forEach(f=>{
-        const o=document.createElement('option');
-        o.value=f;o.textContent=f;
-        if(f===prev) o.selected=true;
-        sel.appendChild(o);
-      });
-    }
-  }catch(e){}
+    // Charger les entités de la source sélectionnée pour extraire ses champs
+    const params=new URLSearchParams({page:1,per_page:50});
+    if(src) params.set('source',src);
+    const data=await api(`/entities?${params}`);
+    if(!data?.entities) return;
+    const fields=[...new Set(data.entities.flatMap(e=>Object.keys(e.data||{})))].sort();
+    const prev=sel.value;
+    sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
+    fields.forEach(f=>{
+      const o=document.createElement('option');
+      o.value=f;o.textContent=f;
+      if(f===prev) o.selected=true;
+      sel.appendChild(o);
+    });
+  }catch(e){
+    // Fallback : utiliser /reporting/fields si l'appel échoue
+    try{
+      const fdata=await api('/reporting/fields');
+      if(fdata?.fields){
+        sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
+        fdata.fields.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;sel.appendChild(o);});
+      }
+    }catch(e2){}
+  }
 }
 async function detectDuplicates(){
   const method=document.getElementById('dup-method').value;
