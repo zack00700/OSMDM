@@ -232,7 +232,6 @@ async function deleteEntity(id){if(!confirm('Supprimer ?'))return;await api(`/en
 // ── DUPLICATES ─────────────────────────────────────────────────────────────
 function toggleFuzzy(){document.getElementById('fuzzy-threshold-wrap').style.display=document.getElementById('dup-method').value==='fuzzy'?'block':'none';}
 async function initDupSection(){
-  // Charger les sources disponibles
   const srcSel=document.getElementById('dup-source-filter');
   if(!srcSel) return;
   try{
@@ -244,34 +243,60 @@ async function initDupSection(){
   }catch(e){}
   await loadDupFields();
 }
+
+// Cache des champs par source pour éviter les appels répétés
+let _dupFieldsCache={};
+
 async function loadDupFields(){
   const sel=document.getElementById('dup-field-select');if(!sel)return;
   const src=document.getElementById('dup-source-filter')?.value||'';
+  
+  // Vérifier le cache
+  const cacheKey=src||'__all__';
+  if(_dupFieldsCache[cacheKey]){
+    _renderDupFields(sel,_dupFieldsCache[cacheKey]);
+    return;
+  }
+  
+  let fields=[];
   try{
-    // Charger les entités de la source sélectionnée pour extraire ses champs
-    const params=new URLSearchParams({page:1,per_page:50});
-    if(src) params.set('source',src);
-    const data=await api(`/entities?${params}`);
-    if(!data?.entities) return;
-    const fields=[...new Set(data.entities.flatMap(e=>Object.keys(e.data||{})))].sort();
-    const prev=sel.value;
-    sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
-    fields.forEach(f=>{
-      const o=document.createElement('option');
-      o.value=f;o.textContent=f;
-      if(f===prev) o.selected=true;
-      sel.appendChild(o);
-    });
+    if(!src){
+      // Toutes sources : utiliser /reporting/fields (scan 300 entités)
+      const fdata=await api('/reporting/fields');
+      if(fdata?.fields) fields=fdata.fields;
+    } else {
+      // Source spécifique : charger un échantillon de cette source
+      // Essayer d'abord avec per_page petit pour la vitesse
+      const data=await api(`/entities?page=1&per_page=20&source=${encodeURIComponent(src)}`);
+      if(data?.entities?.length){
+        fields=[...new Set(data.entities.flatMap(e=>Object.keys(e.data||{})))].sort();
+      } else {
+        // Fallback sur reporting/fields
+        const fdata=await api('/reporting/fields');
+        if(fdata?.fields) fields=fdata.fields;
+      }
+    }
   }catch(e){
-    // Fallback : utiliser /reporting/fields si l'appel échoue
+    // Dernier fallback
     try{
       const fdata=await api('/reporting/fields');
-      if(fdata?.fields){
-        sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
-        fdata.fields.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;sel.appendChild(o);});
-      }
+      if(fdata?.fields) fields=fdata.fields;
     }catch(e2){}
   }
+  
+  _dupFieldsCache[cacheKey]=fields;
+  _renderDupFields(sel,fields);
+}
+
+function _renderDupFields(sel,fields){
+  const prev=sel.value;
+  sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
+  fields.forEach(f=>{
+    const o=document.createElement('option');
+    o.value=f;o.textContent=f;
+    if(f===prev) o.selected=true;
+    sel.appendChild(o);
+  });
 }
 async function detectDuplicates(){
   const method=document.getElementById('dup-method').value;
