@@ -701,8 +701,8 @@ def _make_conn(info):
         import pymysql
         return pymysql.connect(host=h, port=int(p or 3306), database=db_name, user=user, password=pwd, connect_timeout=10)
     elif db_type == 'mssql':
-        import pyodbc
-        return pyodbc.connect(f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={h},{p or 1433};DATABASE={db_name};UID={user};PWD={pwd};timeout=10")
+        import pymssql
+        return pymssql.connect(server=h, port=int(p or 1433), database=db_name, user=user, password=pwd, login_timeout=10)
     elif db_type == 'oracle':
         import cx_Oracle
         dsn = cx_Oracle.makedsn(h, p or 1521, service_name=db_name)
