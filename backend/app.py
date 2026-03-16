@@ -575,6 +575,8 @@ def import_csv():
             try:
                 eid = str(uuid.uuid4())
                 row_dict = row.to_dict()
+                # Nettoyer les NaN/None (NaN n'est pas du JSON valide)
+                row_dict = {k: (None if (isinstance(v, float) and (v != v)) else v) for k, v in row_dict.items()}
                 data_json = json.dumps(row_dict, ensure_ascii=False, default=str)
                 ename, etype, ecountry = extract_meta(row_dict)
                 batch.append((eid, 'MDM-'+eid[:8].upper(), 'active', source_label, data_json,
@@ -872,8 +874,10 @@ def import_from_db(cid):
         for _, row_data in df.iterrows():
             try:
                 eid = str(uuid.uuid4())
+                rd = row_data.to_dict()
+                rd = {k: (None if (isinstance(v, float) and (v != v)) else v) for k, v in rd.items()}
                 batch.append((eid, 'MDM-'+eid[:8].upper(), 'active', source_label,
-                              json.dumps(row_data.to_dict(), ensure_ascii=False, default=str)))
+                              json.dumps(rd, ensure_ascii=False, default=str)))
                 if len(batch) >= BATCH:
                     db.executemany("INSERT INTO entities(id,mdm_id,status,source,data) VALUES(?,?,?,?,?)", batch)
                     imported += len(batch); batch = []
