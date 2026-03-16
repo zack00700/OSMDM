@@ -244,33 +244,37 @@ async function initDupSection(){
   await loadDupFields();
 }
 
+let _dupFieldsCallId=0;
+
 async function loadDupFields(){
   const sel=document.getElementById('dup-field-select');if(!sel)return;
   const src=document.getElementById('dup-source-filter')?.value||'';
   
+  // Incrémenter l'ID d'appel pour annuler les appels précédents
+  const callId=++_dupFieldsCallId;
+  
   sel.innerHTML='<option value="">Chargement...</option>';
   
   try{
+    let fields=[];
     if(src){
-      // Source spécifique : charger uniquement les entités de cette source
       const data=await api(`/entities?page=1&per_page=30&source=${encodeURIComponent(src)}`);
+      // Vérifier que cet appel est toujours le plus récent
+      if(callId!==_dupFieldsCallId) return;
       if(data?.entities?.length){
-        const fields=[...new Set(data.entities.flatMap(e=>Object.keys(e.data||{})))].sort();
-        sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
-        fields.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;sel.appendChild(o);});
-        return;
+        fields=[...new Set(data.entities.flatMap(e=>Object.keys(e.data||{})))].sort();
       }
-    }
-    // Toutes sources : charger /reporting/fields
-    const fdata=await api('/reporting/fields');
-    if(fdata?.fields){
-      sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
-      fdata.fields.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;sel.appendChild(o);});
     } else {
-      sel.innerHTML='<option value="">— Aucun champ —</option>';
+      const fdata=await api('/reporting/fields');
+      if(callId!==_dupFieldsCallId) return;
+      if(fdata?.fields) fields=fdata.fields;
     }
+    // Dernier check avant de mettre à jour le DOM
+    if(callId!==_dupFieldsCallId) return;
+    sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
+    fields.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;sel.appendChild(o);});
   }catch(e){
-    sel.innerHTML='<option value="">— Erreur chargement —</option>';
+    if(callId===_dupFieldsCallId) sel.innerHTML='<option value="">— Erreur chargement —</option>';
   }
 }
 async function detectDuplicates(){
