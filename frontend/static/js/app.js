@@ -244,59 +244,34 @@ async function initDupSection(){
   await loadDupFields();
 }
 
-// Cache des champs par source pour éviter les appels répétés
-let _dupFieldsCache={};
-
 async function loadDupFields(){
   const sel=document.getElementById('dup-field-select');if(!sel)return;
   const src=document.getElementById('dup-source-filter')?.value||'';
   
-  // Vérifier le cache
-  const cacheKey=src||'__all__';
-  if(_dupFieldsCache[cacheKey]){
-    _renderDupFields(sel,_dupFieldsCache[cacheKey]);
-    return;
-  }
+  sel.innerHTML='<option value="">Chargement...</option>';
   
-  let fields=[];
   try{
-    if(!src){
-      // Toutes sources : utiliser /reporting/fields (scan 300 entités)
-      const fdata=await api('/reporting/fields');
-      if(fdata?.fields) fields=fdata.fields;
-    } else {
-      // Source spécifique : charger un échantillon de cette source
-      // Essayer d'abord avec per_page petit pour la vitesse
-      const data=await api(`/entities?page=1&per_page=20&source=${encodeURIComponent(src)}`);
+    if(src){
+      // Source spécifique : charger uniquement les entités de cette source
+      const data=await api(`/entities?page=1&per_page=30&source=${encodeURIComponent(src)}`);
       if(data?.entities?.length){
-        fields=[...new Set(data.entities.flatMap(e=>Object.keys(e.data||{})))].sort();
-      } else {
-        // Fallback sur reporting/fields
-        const fdata=await api('/reporting/fields');
-        if(fdata?.fields) fields=fdata.fields;
+        const fields=[...new Set(data.entities.flatMap(e=>Object.keys(e.data||{})))].sort();
+        sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
+        fields.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;sel.appendChild(o);});
+        return;
       }
     }
+    // Toutes sources : charger /reporting/fields
+    const fdata=await api('/reporting/fields');
+    if(fdata?.fields){
+      sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
+      fdata.fields.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;sel.appendChild(o);});
+    } else {
+      sel.innerHTML='<option value="">— Aucun champ —</option>';
+    }
   }catch(e){
-    // Dernier fallback
-    try{
-      const fdata=await api('/reporting/fields');
-      if(fdata?.fields) fields=fdata.fields;
-    }catch(e2){}
+    sel.innerHTML='<option value="">— Erreur chargement —</option>';
   }
-  
-  _dupFieldsCache[cacheKey]=fields;
-  _renderDupFields(sel,fields);
-}
-
-function _renderDupFields(sel,fields){
-  const prev=sel.value;
-  sel.innerHTML='<option value="">— Sélectionner un champ —</option>';
-  fields.forEach(f=>{
-    const o=document.createElement('option');
-    o.value=f;o.textContent=f;
-    if(f===prev) o.selected=true;
-    sel.appendChild(o);
-  });
 }
 async function detectDuplicates(){
   const method=document.getElementById('dup-method').value;
